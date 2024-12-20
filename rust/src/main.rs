@@ -41,7 +41,7 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
     let lines = read_lines(file_path)
         .with_context(|| format!("Failed to read lines from file: {}", file_path))?;
 
-    let (col1, col2): (Vec<i32>, Vec<i32>) = lines
+    let (mut col1, mut col2): (Vec<i32>, Vec<i32>) = lines
         .map_while(Result::ok)
         .filter_map(|line| {
             let mut nums = line.split_whitespace().map(|x| x.parse::<i32>());
@@ -59,7 +59,6 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
             },
         );
 
-    let (mut col1, mut col2) = (col1, col2);
     col1.sort_unstable();
     col2.sort_unstable();
 
