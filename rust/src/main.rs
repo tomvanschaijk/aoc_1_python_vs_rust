@@ -55,7 +55,7 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
 }
 
 fn parse_line(bytes: &[u8]) -> Option<(i32, i32)> {
-    if bytes.len() < 13 {
+    if bytes.len() < 11 {
         return None;
     }
 
@@ -66,13 +66,13 @@ fn parse_line(bytes: &[u8]) -> Option<(i32, i32)> {
         + (bytes[3] - b'0') as i32 * 10
         + (bytes[4] - b'0') as i32;
 
-    // Skip 3 spaces
+    // Skip 1 space
     // Next 5 bytes for the second number (digits)
-    let num2 = (bytes[8] - b'0') as i32 * 10000
-        + (bytes[9] - b'0') as i32 * 1000
-        + (bytes[10] - b'0') as i32 * 100
-        + (bytes[11] - b'0') as i32 * 10
-        + (bytes[12] - b'0') as i32;
+    let num2 = (bytes[6] - b'0') as i32 * 10000
+        + (bytes[7] - b'0') as i32 * 1000
+        + (bytes[8] - b'0') as i32 * 100
+        + (bytes[9] - b'0') as i32 * 10
+        + (bytes[10] - b'0') as i32;
 
     Some((num1, num2))
 }
