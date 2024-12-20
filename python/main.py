@@ -2,6 +2,7 @@ import time
 import polars as pl
 import numpy as np
 from numba import jit
+from concurrent.futures import ThreadPoolExecutor
 
 def get_sorted_vectors(file_path):
     try:
@@ -13,7 +14,13 @@ def get_sorted_vectors(file_path):
     except FileNotFoundError as e:
         raise FileNotFoundError(f"File not found: {e}")
 
-    return np.sort(col1), np.sort(col2)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future1 = executor.submit(np.sort, col1)
+        future2 = executor.submit(np.sort, col2)
+        sorted_col1 = future1.result()
+        sorted_col2 = future2.result()
+
+    return sorted_col1, sorted_col2
 
 # Using Numba's JIT compiler to speed up the distance computation
 @jit(nopython=True, cache=True)
@@ -21,11 +28,11 @@ def compute_distance(v1, v2):
     return np.sum(np.abs(v1 - v2))
 
 def main():
-     # Warm-up call with small dummy inputs to precompile the Numba function
-    dummy_v1 = np.array([1, 2, 3], dtype=np.int32)
-    dummy_v2 = np.array([4, 5, 6], dtype=np.int32)
+    # Warm-up call with small dummy inputs to precompile the Numba function
+    dummy_v1 = np.array([1, 2, 3], dtype=np.int64)
+    dummy_v2 = np.array([4, 5, 6], dtype=np.int64)
     compute_distance(dummy_v1, dummy_v2)  # This triggers the compilation
-    
+
     files = [
         "./data/input_1k.txt",
         "./data/input_10k.txt",
