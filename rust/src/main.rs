@@ -1,12 +1,12 @@
 use anyhow::{Context, Result};
 use futures::StreamExt;
+use memmap2::MmapOptions;
 use rayon::prelude::*;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, BufReader},
     task::spawn,
 };
-use memmap2::MmapOptions;
 
 use std::time::Instant;
 
@@ -18,6 +18,8 @@ async fn main() -> Result<()> {
         "./data/input_100k.txt",
         "./data/input_1m.txt",
     ];
+
+    let now = Instant::now();
 
     let tasks: Vec<_> = files
         .iter()
@@ -50,12 +52,14 @@ async fn main() -> Result<()> {
         task.await.unwrap();
     }
 
+    println!("All files processed in {}ms", now.elapsed().as_millis());
+
     Ok(())
 }
 
 async fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
     let file = File::open(file_path).await.context("Failed to open file")?;
-    let mmap = unsafe { MmapOptions::new().map(&file).unwrap()};
+    let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
     let buffered_reader = BufReader::new(&mmap[..]);
     let lines = buffered_reader.lines();
 
