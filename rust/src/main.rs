@@ -66,7 +66,6 @@ async fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
         )
         .await;
 
-    // Sort vectors
     col1.sort_unstable();
     col2.sort_unstable();
     Ok((col1, col2))
