@@ -1,8 +1,10 @@
 use anyhow::{Context, Result};
+use memmap::MmapOptions;
+use rayon::prelude::*;
+
 use std::{
     fs::File,
-    io::{BufRead, BufReader, Lines},
-    path::Path,
+    io::{BufRead, BufReader},
     time::Instant,
 };
 
@@ -38,8 +40,10 @@ fn main() -> Result<()> {
 }
 
 fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
-    let lines = read_lines(file_path)
-        .with_context(|| format!("Failed to read lines from file: {}", file_path))?;
+    let file = File::open(file_path).context("Failed to open file")?;
+    let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
+    let buffered_reader = BufReader::new(&mmap[..]);
+    let lines = buffered_reader.lines();
 
     let (mut col1, mut col2): (Vec<i32>, Vec<i32>) = lines
         .map_while(Result::ok)
@@ -59,21 +63,12 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
             },
         );
 
-    col1.sort_unstable();
-    col2.sort_unstable();
+    col1.par_sort_unstable();
+    col2.par_sort_unstable();
 
     Ok((col1, col2))
 }
 
 fn compute_distance(v1: &[i32], v2: &[i32]) -> i32 {
-    v1.iter().zip(v2).map(|(a, b)| (a - b).abs()).sum()
-}
-
-fn read_lines<P>(filename: P) -> Result<Lines<BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(&filename)
-        .with_context(|| format!("Failed to open file: {:?}", filename.as_ref()))?;
-    Ok(BufReader::new(file).lines())
+    v1.par_iter().zip(v2).map(|(a, b)| (a - b).abs()).sum()
 }

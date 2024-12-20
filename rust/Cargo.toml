@@ -6,3 +6,5 @@ edition = "2021"
 [dependencies]
 anyhow = { workspace = true }
 tokio = { workspace = true }
+rayon = { workspace = true }
+memmap = { workspace = true }
