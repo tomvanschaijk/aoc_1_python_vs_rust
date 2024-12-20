@@ -54,14 +54,7 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
                 _ => None,
             }
         })
-        .fold(
-            (Vec::new(), Vec::new()),
-            |(mut col1, mut col2), (v1, v2)| {
-                col1.push(v1);
-                col2.push(v2);
-                (col1, col2)
-            },
-        );
+        .unzip();
 
     col1.par_sort_unstable();
     col2.par_sort_unstable();
