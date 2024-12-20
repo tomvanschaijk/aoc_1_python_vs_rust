@@ -1,10 +1,13 @@
 use anyhow::{Context, Result};
 use futures::StreamExt;
-use std::{path::Path, time::Instant};
+use rayon::prelude::*;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, BufReader},
+    task::spawn,
 };
+
+use std::{path::Path, time::Instant};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -15,24 +18,35 @@ async fn main() -> Result<()> {
         "./data/input_1m.txt",
     ];
 
-    for file in files.iter() {
-        println!("Processing {}...", file);
+    let tasks: Vec<_> = files
+        .iter()
+        .map(|file| {
+            let file = file.to_string();
+            spawn(async move {
+                println!("Processing {}...", file);
 
-        let now = Instant::now();
+                let now = Instant::now();
 
-        match get_sorted_vectors(file).await {
-            Ok((v1, v2)) => {
-                let distance = compute_distance(&v1, &v2);
-                println!(
-                    "The answer is: {}, completed in {}ms\n",
-                    distance,
-                    now.elapsed().as_millis()
-                );
-            }
-            Err(e) => {
-                eprintln!("Error processing file '{}': {:?}\n", file, e);
-            }
-        }
+                match get_sorted_vectors(&file).await {
+                    Ok((v1, v2)) => {
+                        let distance = compute_distance(&v1, &v2);
+                        println!(
+                            "The answer for {} is: {}, completed in {}ms",
+                            file,
+                            distance,
+                            now.elapsed().as_millis()
+                        );
+                    }
+                    Err(e) => {
+                        eprintln!("Error processing file '{}': {:?}", file, e);
+                    }
+                }
+            })
+        })
+        .collect();
+
+    for task in tasks {
+        task.await.unwrap();
     }
 
     Ok(())
@@ -66,13 +80,14 @@ async fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
         )
         .await;
 
-    col1.sort_unstable();
-    col2.sort_unstable();
+    col1.par_sort_unstable();
+    col2.par_sort_unstable();
+
     Ok((col1, col2))
 }
 
 fn compute_distance(v1: &[i32], v2: &[i32]) -> i32 {
-    v1.iter().zip(v2).map(|(a, b)| (a - b).abs()).sum()
+    v1.par_iter().zip(v2).map(|(a, b)| (a - b).abs()).sum()
 }
 
 async fn read_lines<P>(filename: P) -> Result<tokio::io::Lines<BufReader<File>>>
