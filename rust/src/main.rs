@@ -2,11 +2,7 @@ use anyhow::{Context, Result};
 use memmap::MmapOptions;
 use rayon::prelude::*;
 
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    time::Instant,
-};
+use std::{fs::File, time::Instant};
 
 fn main() -> Result<()> {
     let files = [
@@ -41,32 +37,33 @@ fn main() -> Result<()> {
 
 fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
     let file = File::open(file_path).context("Failed to open file")?;
-    let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-    let buffered_reader = BufReader::new(&mmap[..]);
-    let lines = buffered_reader.lines();
+    let mmap = unsafe { MmapOptions::new().map(&file)? };
 
-    let (mut col1, mut col2): (Vec<i32>, Vec<i32>) = lines
-        .map_while(Result::ok)
-        .filter_map(|line| {
-            let mut nums = line.split_whitespace().map(|x| x.parse::<i32>());
-            match (nums.next(), nums.next()) {
-                (Some(Ok(value1)), Some(Ok(value2))) => Some((value1, value2)),
-                _ => None,
-            }
-        })
-        .fold(
-            (Vec::new(), Vec::new()),
-            |(mut col1, mut col2), (v1, v2)| {
-                col1.push(v1);
-                col2.push(v2);
-                (col1, col2)
-            },
-        );
+    let (mut col1, mut col2): (Vec<i32>, Vec<i32>) = mmap
+        .par_split(|&line| line == b'\n')
+        .filter_map(parse_line)
+        .unzip();
 
     col1.par_sort_unstable();
     col2.par_sort_unstable();
 
     Ok((col1, col2))
+}
+
+fn parse_line(bytes: &[u8]) -> Option<(i32, i32)> {
+    if bytes.len() < 13 {
+        return None;
+    }
+
+    unsafe {
+        let num1 = std::str::from_utf8_unchecked(&bytes[0..5])
+            .parse::<i32>()
+            .ok()?;
+        let num2 = std::str::from_utf8_unchecked(&bytes[8..13])
+            .parse::<i32>()
+            .ok()?;
+        Some((num1, num2))
+    }
 }
 
 fn compute_distance(v1: &[i32], v2: &[i32]) -> i32 {
