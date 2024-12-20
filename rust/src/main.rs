@@ -56,8 +56,7 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
         })
         .unzip();
 
-    col1.par_sort_unstable();
-    col2.par_sort_unstable();
+    rayon::join(|| col1.par_sort_unstable(), || col2.par_sort_unstable());
 
     Ok((col1, col2))
 }
