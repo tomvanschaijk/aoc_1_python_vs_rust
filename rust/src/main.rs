@@ -67,11 +67,9 @@ async fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
         .filter_map(|line| async move {
             match line {
                 Ok(line_str) => {
-                    let mut nums = line_str.split_whitespace().map(|x| x.parse::<i32>());
-                    match (nums.next(), nums.next()) {
-                        (Some(Ok(value1)), Some(Ok(value2))) => Some((value1, value2)),
-                        _ => None,
-                    }
+                    // Convert the line to a byte slice and parse using parse_line
+                    let bytes = line_str.as_bytes();
+                    parse_line(bytes)
                 }
                 Err(_) => None,
             }
@@ -90,6 +88,22 @@ async fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
     col2.par_sort_unstable();
 
     Ok((col1, col2))
+}
+
+fn parse_line(bytes: &[u8]) -> Option<(i32, i32)> {
+    if bytes.len() < 13 {
+        return None;
+    }
+
+    unsafe {
+        let num1 = std::str::from_utf8_unchecked(&bytes[0..5])
+            .parse::<i32>()
+            .ok()?;
+        let num2 = std::str::from_utf8_unchecked(&bytes[8..13])
+            .parse::<i32>()
+            .ok()?;
+        Some((num1, num2))
+    }
 }
 
 fn compute_distance(v1: &[i32], v2: &[i32]) -> i32 {
