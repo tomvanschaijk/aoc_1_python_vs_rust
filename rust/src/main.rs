@@ -40,9 +40,13 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
     let mmap = unsafe { MmapOptions::new().map(&file)? };
 
     let (mut col1, mut col2): (Vec<i32>, Vec<i32>) = mmap
-        .par_split(|&line| line == b'\n')
-        .filter_map(parse_line)
-        .unzip();
+        .split(|&line| line == b'\n') // Split by newline
+        .filter_map(parse_line) // Parse each line
+        .fold((Vec::new(), Vec::new()), |(mut c1, mut c2), (a, b)| {
+            c1.push(a);
+            c2.push(b);
+            (c1, c2)
+        });
 
     col1.par_sort_unstable();
     col2.par_sort_unstable();
