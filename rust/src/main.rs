@@ -55,15 +55,22 @@ fn parse_line(bytes: &[u8]) -> Option<(i32, i32)> {
         return None;
     }
 
-    unsafe {
-        let num1 = std::str::from_utf8_unchecked(&bytes[0..5])
-            .parse::<i32>()
-            .ok()?;
-        let num2 = std::str::from_utf8_unchecked(&bytes[8..13])
-            .parse::<i32>()
-            .ok()?;
-        Some((num1, num2))
-    }
+    // First 5 bytes for the first number (digits)
+    let num1 = (bytes[0] - b'0') as i32 * 10000
+        + (bytes[1] - b'0') as i32 * 1000
+        + (bytes[2] - b'0') as i32 * 100
+        + (bytes[3] - b'0') as i32 * 10
+        + (bytes[4] - b'0') as i32;
+
+    // Skip 3 spaces
+    // Next 5 bytes for the second number (digits)
+    let num2 = (bytes[8] - b'0') as i32 * 10000
+        + (bytes[9] - b'0') as i32 * 1000
+        + (bytes[10] - b'0') as i32 * 100
+        + (bytes[11] - b'0') as i32 * 10
+        + (bytes[12] - b'0') as i32;
+
+    Some((num1, num2))
 }
 
 fn compute_distance(v1: &[i32], v2: &[i32]) -> i32 {
