@@ -63,26 +63,18 @@ async fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
     let buffered_reader = BufReader::new(&mmap[..]);
     let lines = buffered_reader.lines();
 
-    let (mut col1, mut col2) = tokio_stream::wrappers::LinesStream::new(lines)
-        .filter_map(|line| async move {
-            match line {
-                Ok(line_str) => {
-                    // Convert the line to a byte slice and parse using parse_line
-                    let bytes = line_str.as_bytes();
-                    parse_line(bytes)
+    let (mut col1, mut col2): (Vec<i32>, Vec<i32>) =
+        tokio_stream::wrappers::LinesStream::new(lines)
+            .filter_map(|line| async move {
+                match line {
+                    Ok(line_str) => parse_line(line_str.as_bytes()),
+                    Err(_) => None,
                 }
-                Err(_) => None,
-            }
-        })
-        .fold(
-            (Vec::new(), Vec::new()),
-            |(mut col1, mut col2), (v1, v2)| async move {
-                col1.push(v1);
-                col2.push(v2);
-                (col1, col2)
-            },
-        )
-        .await;
+            })
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .unzip();
 
     col1.par_sort_unstable();
     col2.par_sort_unstable();
