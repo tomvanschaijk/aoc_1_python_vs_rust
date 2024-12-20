@@ -1,12 +1,7 @@
 use anyhow::{Context, Result};
-use futures::StreamExt;
 use memmap2::MmapOptions;
 use rayon::prelude::*;
-use tokio::{
-    fs::File,
-    io::{AsyncBufReadExt, BufReader},
-    task::spawn,
-};
+use tokio::{fs::File, task::spawn};
 
 use std::time::Instant;
 
@@ -60,21 +55,15 @@ async fn main() -> Result<()> {
 async fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
     let file = File::open(file_path).await.context("Failed to open file")?;
     let mmap = unsafe { MmapOptions::new().map(&file).unwrap() };
-    let buffered_reader = BufReader::new(&mmap[..]);
-    let lines = buffered_reader.lines();
 
-    let (mut col1, mut col2): (Vec<i32>, Vec<i32>) =
-        tokio_stream::wrappers::LinesStream::new(lines)
-            .filter_map(|line| async move {
-                match line {
-                    Ok(line_str) => parse_line(line_str.as_bytes()),
-                    Err(_) => None,
-                }
-            })
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .unzip();
+    let (mut col1, mut col2): (Vec<i32>, Vec<i32>) = mmap
+        .split(|&line| line == b'\n') // Split by newline
+        .filter_map(parse_line) // Parse each line
+        .fold((Vec::new(), Vec::new()), |(mut c1, mut c2), (a, b)| {
+            c1.push(a);
+            c2.push(b);
+            (c1, c2)
+        });
 
     col1.par_sort_unstable();
     col2.par_sort_unstable();

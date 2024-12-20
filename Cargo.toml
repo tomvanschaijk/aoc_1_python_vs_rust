@@ -5,8 +5,6 @@ members = ["rust"]
 [workspace.dependencies]
 anyhow = { version = "1.0.94" }
 tokio = { version = "1.42.0", features = ["full"] }
-tokio-stream = { version = "0.1.16", features = ["full"] }
-futures = { version = "0.3.31" }
 rayon = { version = "1.10.0" }
 memmap2 = { version = "0.9.5" }
 
