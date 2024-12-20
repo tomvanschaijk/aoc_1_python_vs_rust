@@ -35,11 +35,11 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
+fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i64>, Vec<i64>)> {
     let file = File::open(file_path).context("Failed to open file")?;
     let mmap = unsafe { MmapOptions::new().map(&file)? };
 
-    let (mut col1, mut col2): (Vec<i32>, Vec<i32>) = mmap
+    let (mut col1, mut col2): (Vec<i64>, Vec<i64>) = mmap
         .split(|&line| line == b'\n') // Split by newline
         .filter_map(parse_line) // Parse each line
         .fold((Vec::new(), Vec::new()), |(mut c1, mut c2), (a, b)| {
@@ -48,35 +48,34 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
             (c1, c2)
         });
 
-    col1.par_sort_unstable();
-    col2.par_sort_unstable();
+    rayon::join(|| col1.par_sort_unstable(), || col2.par_sort_unstable());
 
     Ok((col1, col2))
 }
 
-fn parse_line(bytes: &[u8]) -> Option<(i32, i32)> {
+fn parse_line(bytes: &[u8]) -> Option<(i64, i64)> {
     if bytes.len() < 11 {
         return None;
     }
 
     // First 5 bytes for the first number (digits)
-    let num1 = (bytes[0] - b'0') as i32 * 10000
-        + (bytes[1] - b'0') as i32 * 1000
-        + (bytes[2] - b'0') as i32 * 100
-        + (bytes[3] - b'0') as i32 * 10
-        + (bytes[4] - b'0') as i32;
+    let num1 = (bytes[0] - b'0') as i64 * 10000
+        + (bytes[1] - b'0') as i64 * 1000
+        + (bytes[2] - b'0') as i64 * 100
+        + (bytes[3] - b'0') as i64 * 10
+        + (bytes[4] - b'0') as i64;
 
     // Skip 1 space
     // Next 5 bytes for the second number (digits)
-    let num2 = (bytes[6] - b'0') as i32 * 10000
-        + (bytes[7] - b'0') as i32 * 1000
-        + (bytes[8] - b'0') as i32 * 100
-        + (bytes[9] - b'0') as i32 * 10
-        + (bytes[10] - b'0') as i32;
+    let num2 = (bytes[6] - b'0') as i64 * 10000
+        + (bytes[7] - b'0') as i64 * 1000
+        + (bytes[8] - b'0') as i64 * 100
+        + (bytes[9] - b'0') as i64 * 10
+        + (bytes[10] - b'0') as i64;
 
     Some((num1, num2))
 }
 
-fn compute_distance(v1: &[i32], v2: &[i32]) -> i32 {
+fn compute_distance(v1: &[i64], v2: &[i64]) -> i64 {
     v1.par_iter().zip(v2).map(|(a, b)| (a - b).abs()).sum()
 }

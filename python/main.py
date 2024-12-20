@@ -21,6 +21,11 @@ def compute_distance(v1, v2):
     return np.sum(np.abs(v1 - v2))
 
 def main():
+     # Warm-up call with small dummy inputs to precompile the Numba function
+    dummy_v1 = np.array([1, 2, 3], dtype=np.int32)
+    dummy_v2 = np.array([4, 5, 6], dtype=np.int32)
+    compute_distance(dummy_v1, dummy_v2)  # This triggers the compilation
+    
     files = [
         "./data/input_1k.txt",
         "./data/input_10k.txt",
