@@ -6,8 +6,9 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader},
     task::spawn,
 };
+use memmap2::MmapOptions;
 
-use std::{path::Path, time::Instant};
+use std::time::Instant;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -53,9 +54,10 @@ async fn main() -> Result<()> {
 }
 
 async fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
-    let lines = read_lines(file_path)
-        .await
-        .with_context(|| format!("Failed to read lines from file: {}", file_path))?;
+    let file = File::open(file_path).await.context("Failed to open file")?;
+    let mmap = unsafe { MmapOptions::new().map(&file).unwrap()};
+    let buffered_reader = BufReader::new(&mmap[..]);
+    let lines = buffered_reader.lines();
 
     let (mut col1, mut col2) = tokio_stream::wrappers::LinesStream::new(lines)
         .filter_map(|line| async move {
@@ -88,12 +90,4 @@ async fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i32>, Vec<i32>)> {
 
 fn compute_distance(v1: &[i32], v2: &[i32]) -> i32 {
     v1.par_iter().zip(v2).map(|(a, b)| (a - b).abs()).sum()
-}
-
-async fn read_lines<P>(filename: P) -> Result<tokio::io::Lines<BufReader<File>>>
-where
-    P: AsRef<Path>,
-{
-    let file = File::open(filename).await.context("Failed to open file")?;
-    Ok(BufReader::new(file).lines())
 }
