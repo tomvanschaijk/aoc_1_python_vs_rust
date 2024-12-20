@@ -1,0 +1,16 @@
+[workspace]
+resolver = "2"
+members = [
+    "rust",
+]
+
+[workspace.dependencies]
+anyhow = { version = "1.0.94" }
+tokio = { version = "1.42.0", features = ["full"] }
+
+[profile.release]
+opt-level = "z"
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"

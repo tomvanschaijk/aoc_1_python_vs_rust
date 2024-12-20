@@ -1,0 +1,56 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\\python\\main.py",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "env": {
+                "PYTHONPATH": "${cwd}",
+            },
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Rust debug run",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=rust",
+                    "--package=rust"
+                ],
+                "filter": {
+                    "name": "rust",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Rust release run",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--release",
+                    "--bin=rust",
+                    "--package=rust"
+                ],
+                "filter": {
+                    "name": "rust",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+    ]
+}
