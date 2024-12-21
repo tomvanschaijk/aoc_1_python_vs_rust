@@ -4,11 +4,12 @@ use anyhow::{Context, Result};
 use memmap::MmapOptions;
 use rayon::prelude::*;
 
-use std::simd::num::SimdInt;
-use std::simd::{i64x64, i64x8};
-use std::{fs::File, time::Instant};
+use std::{
+    fs::File,
+    simd::{i64x64, i64x8, num::SimdInt},
+    time::Instant,
+};
 
-#[inline(always)]
 fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i64>, Vec<i64>)> {
     let file = File::open(file_path).context("Failed to open file")?;
     let mmap = unsafe { MmapOptions::new().map(&file)? };
@@ -34,7 +35,6 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i64>, Vec<i64>)> {
     Ok((col1, col2))
 }
 
-#[inline(always)]
 fn parse_line(bytes: &[u8]) -> Option<(i64, i64)> {
     if bytes.len() < 11 {
         return None;
@@ -65,16 +65,12 @@ fn parse_line(bytes: &[u8]) -> Option<(i64, i64)> {
     let powers_of_ten = i64x8::from([10000, 1000, 100, 10, 1, 0, 0, 0]);
 
     // Do the multiplication
-    let num1_simd = num1_simd * powers_of_ten;
-    let num2_simd = num2_simd * powers_of_ten;
-
-    let num1 = num1_simd.reduce_sum();
-    let num2 = num2_simd.reduce_sum();
+    let num1 = (num1_simd * powers_of_ten).reduce_sum();
+    let num2 = (num2_simd * powers_of_ten).reduce_sum();
 
     Some((num1, num2))
 }
 
-#[inline(always)]
 fn compute_distance(v1: &[i64], v2: &[i64]) -> i64 {
     const CHUNK_SIZE: usize = 64;
     let len = v1.len();
