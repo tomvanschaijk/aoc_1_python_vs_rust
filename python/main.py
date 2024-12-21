@@ -42,6 +42,7 @@ def main():
 
     for file in files:
         print(f"Processing {file}...")
+        
         start_time = time.time()
 
         v1, v2 = get_sorted_vectors(file)
