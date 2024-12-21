@@ -6,7 +6,7 @@ use rayon::prelude::*;
 
 use std::{
     fs::File,
-    simd::{i64x64, i64x8, num::SimdInt},
+    simd::{i32x8, i64x8, num::SimdInt},
     time::Instant,
 };
 
@@ -40,59 +40,45 @@ fn parse_line(bytes: &[u8]) -> Option<(i64, i64)> {
         return None;
     }
 
-    let num1_simd = i64x8::from([
-        (bytes[0] - b'0') as i64,
-        (bytes[1] - b'0') as i64,
-        (bytes[2] - b'0') as i64,
-        (bytes[3] - b'0') as i64,
-        (bytes[4] - b'0') as i64,
-        0,
-        0,
-        0,
+    let num1_simd = i32x8::from([
+        (bytes[0] - b'0') as i32, (bytes[1] - b'0') as i32, 
+        (bytes[2] - b'0') as i32, (bytes[3] - b'0') as i32,
+        (bytes[4] - b'0') as i32, 0, 0, 0
     ]);
-    let num2_simd = i64x8::from([
-        (bytes[6] - b'0') as i64,
-        (bytes[7] - b'0') as i64,
-        (bytes[8] - b'0') as i64,
-        (bytes[9] - b'0') as i64,
-        (bytes[10] - b'0') as i64,
-        0,
-        0,
-        0,
+    let num2_simd = i32x8::from([
+        (bytes[6] - b'0') as i32, (bytes[7] - b'0') as i32, 
+        (bytes[8] - b'0') as i32, (bytes[9] - b'0') as i32,
+        (bytes[10] - b'0') as i32, 0, 0, 0
     ]);
 
     // SIMD vector for powers of 10 for multiplication
-    let powers_of_ten = i64x8::from([10000, 1000, 100, 10, 1, 0, 0, 0]);
+    let powers_of_ten = i32x8::from([10000, 1000, 100, 10, 1, 0, 0, 0]);
+
 
     // Do the multiplication
-    let num1 = (num1_simd * powers_of_ten).reduce_sum();
-    let num2 = (num2_simd * powers_of_ten).reduce_sum();
+    let num1 = (num1_simd * powers_of_ten).reduce_sum() as i64;
+    let num2 = (num2_simd * powers_of_ten).reduce_sum() as i64;
 
     Some((num1, num2))
 }
 
 fn compute_distance(v1: &[i64], v2: &[i64]) -> i64 {
-    const CHUNK_SIZE: usize = 64;
+    const CHUNK_SIZE: usize = 8; // Changed to match SIMD vector size
     let len = v1.len();
-    let chunks = len / CHUNK_SIZE; // Number of full SIMD chunks
+    let chunks = len / CHUNK_SIZE;
 
-    // Parallel processing of SIMD chunks
     let sum: i64 = (0..chunks)
         .into_par_iter()
         .map(|i| {
             let start = i * CHUNK_SIZE;
-            let end = start + CHUNK_SIZE;
-
-            // Load CHUNK_SIZE elements from v1 and v2 into SIMD vectors
-            let v1_simd = i64x64::from_slice(&v1[start..end]);
-            let v2_simd = i64x64::from_slice(&v2[start..end]);
-
+            let v1_simd = i64x8::from_slice(&v1[start..start + CHUNK_SIZE]);
+            let v2_simd = i64x8::from_slice(&v2[start..start + CHUNK_SIZE]);
             let diff = (v1_simd - v2_simd).abs();
             diff.reduce_sum()
         })
         .sum();
 
-    // Process the remaining elements (if any) without SIMD
+    // Handle remaining elements if any
     let remainder_sum: i64 = (chunks * CHUNK_SIZE..len)
         .map(|i| (v1[i] - v2[i]).abs())
         .sum();
