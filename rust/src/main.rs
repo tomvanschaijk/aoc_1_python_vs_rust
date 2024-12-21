@@ -81,10 +81,11 @@ fn compute_distance(v1: &[i64], v2: &[i64]) -> i64 {
         .into_par_iter()
         .map(|i| {
             let start = i * CHUNK_SIZE;
+            let end = start + CHUNK_SIZE;
 
             // Load CHUNK_SIZE elements from v1 and v2 into SIMD vectors
-            let v1_simd = i64x64::from_slice(&v1[start..start + CHUNK_SIZE]);
-            let v2_simd = i64x64::from_slice(&v2[start..start + CHUNK_SIZE]);
+            let v1_simd = i64x64::from_slice(&v1[start..end]);
+            let v2_simd = i64x64::from_slice(&v2[start..end]);
 
             let diff = (v1_simd - v2_simd).abs();
             diff.reduce_sum()
