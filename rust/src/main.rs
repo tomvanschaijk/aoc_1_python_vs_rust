@@ -70,33 +70,32 @@ fn parse_line(bytes: &[u8]) -> Option<(i64, i64)> {
 
 fn compute_distance(col1: &Vec<i64>, col2: &Vec<i64>) -> i64 {
     // In the source data, we all have 5-digit numbers. So our range is known. This lends itself to bucket sort!
-    let min_val = 10_000;
-    let max_val = 99_999;
-    let range = (max_val - min_val + 1) as usize;
+    const MIN_VAL: i64 = 10_000;
+    const MAX_VAL: i64 = 99_999;
+    const RANGE: usize = (MAX_VAL - MIN_VAL + 1) as usize;
 
-    let mut buckets1 = vec![0; range];
-    let mut buckets2 = vec![0; range];
+    let mut buckets1: [i32; RANGE] = [0; RANGE];
+    let mut buckets2: [i32; RANGE] = [0; RANGE];
 
     // Populate buckets (adjust for offset)
     for &num in col1 {
-        buckets1[(num - min_val) as usize] += 1;
+        buckets1[(num - MIN_VAL) as usize] += 1;
     }
     for &num in col2 {
-        buckets2[(num - min_val) as usize] += 1;
+        buckets2[(num - MIN_VAL) as usize] += 1;
     }
 
+    // Process buckets
     let mut total_distance = 0;
     let mut j = 0;
-
-    // Process buckets
-    (0..range).for_each(|i| {
+    (0..RANGE).for_each(|i| {
         while buckets1[i] > 0 {
-            while j < range && buckets2[j] == 0 {
+            while j < RANGE && buckets2[j] == 0 {
                 j += 1;
             }
-            if j < range {
-                let actual_num1 = i as i64 + min_val;
-                let actual_num2 = j as i64 + min_val;
+            if j < RANGE {
+                let actual_num1 = i as i64 + MIN_VAL;
+                let actual_num2 = j as i64 + MIN_VAL;
                 total_distance += (actual_num1 - actual_num2).abs();
                 buckets1[i] -= 1;
                 buckets2[j] -= 1;
