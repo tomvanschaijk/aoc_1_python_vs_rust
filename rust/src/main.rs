@@ -2,20 +2,19 @@
 
 use anyhow::{Context, Result};
 use memmap::MmapOptions;
-use rayon::prelude::*;
 
 use std::{
     fs::File,
-    simd::{i32x8, i64x8, num::SimdInt},
+    simd::{i32x8, num::SimdInt},
     time::Instant,
 };
 
-fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i64>, Vec<i64>)> {
+fn load_data(file_path: &str) -> Result<(Vec<i64>, Vec<i64>)> {
     let file = File::open(file_path).context("Failed to open file")?;
     let mmap = unsafe { MmapOptions::new().map(&file)? };
     let initial_capacity = mmap.len() / 2;
 
-    let (mut col1, mut col2): (Vec<i64>, Vec<i64>) = mmap
+    let (col1, col2): (Vec<i64>, Vec<i64>) = mmap
         .split(|&line| line == b'\n')
         .filter_map(parse_line)
         .fold(
@@ -30,8 +29,6 @@ fn get_sorted_vectors(file_path: &str) -> Result<(Vec<i64>, Vec<i64>)> {
             },
         );
 
-    rayon::join(|| col1.par_sort_unstable(), || col2.par_sort_unstable());
-
     Ok((col1, col2))
 }
 
@@ -41,19 +38,28 @@ fn parse_line(bytes: &[u8]) -> Option<(i64, i64)> {
     }
 
     let num1_simd = i32x8::from([
-        (bytes[0] - b'0') as i32, (bytes[1] - b'0') as i32, 
-        (bytes[2] - b'0') as i32, (bytes[3] - b'0') as i32,
-        (bytes[4] - b'0') as i32, 0, 0, 0
+        (bytes[0] - b'0') as i32,
+        (bytes[1] - b'0') as i32,
+        (bytes[2] - b'0') as i32,
+        (bytes[3] - b'0') as i32,
+        (bytes[4] - b'0') as i32,
+        0,
+        0,
+        0,
     ]);
     let num2_simd = i32x8::from([
-        (bytes[6] - b'0') as i32, (bytes[7] - b'0') as i32, 
-        (bytes[8] - b'0') as i32, (bytes[9] - b'0') as i32,
-        (bytes[10] - b'0') as i32, 0, 0, 0
+        (bytes[6] - b'0') as i32,
+        (bytes[7] - b'0') as i32,
+        (bytes[8] - b'0') as i32,
+        (bytes[9] - b'0') as i32,
+        (bytes[10] - b'0') as i32,
+        0,
+        0,
+        0,
     ]);
 
     // SIMD vector for powers of 10 for multiplication
     let powers_of_ten = i32x8::from([10000, 1000, 100, 10, 1, 0, 0, 0]);
-
 
     // Do the multiplication
     let num1 = (num1_simd * powers_of_ten).reduce_sum() as i64;
@@ -62,28 +68,43 @@ fn parse_line(bytes: &[u8]) -> Option<(i64, i64)> {
     Some((num1, num2))
 }
 
-fn compute_distance(v1: &[i64], v2: &[i64]) -> i64 {
-    const CHUNK_SIZE: usize = 8; // Changed to match SIMD vector size
-    let len = v1.len();
-    let chunks = len / CHUNK_SIZE;
+fn compute_distance(col1: &Vec<i64>, col2: &Vec<i64>) -> i64 {
+    // In the source data, we all have 5-digit numbers. So our range is known. This lends itself to bucket sort!
+    let min_val = 10_000;
+    let max_val = 99_999;
+    let range = (max_val - min_val + 1) as usize;
 
-    let sum: i64 = (0..chunks)
-        .into_par_iter()
-        .map(|i| {
-            let start = i * CHUNK_SIZE;
-            let v1_simd = i64x8::from_slice(&v1[start..start + CHUNK_SIZE]);
-            let v2_simd = i64x8::from_slice(&v2[start..start + CHUNK_SIZE]);
-            let diff = (v1_simd - v2_simd).abs();
-            diff.reduce_sum()
-        })
-        .sum();
+    let mut buckets1 = vec![0; range];
+    let mut buckets2 = vec![0; range];
 
-    // Handle remaining elements if any
-    let remainder_sum: i64 = (chunks * CHUNK_SIZE..len)
-        .map(|i| (v1[i] - v2[i]).abs())
-        .sum();
+    // Populate buckets (adjust for offset)
+    for &num in col1 {
+        buckets1[(num - min_val) as usize] += 1;
+    }
+    for &num in col2 {
+        buckets2[(num - min_val) as usize] += 1;
+    }
 
-    sum + remainder_sum
+    let mut total_distance = 0;
+    let mut j = 0;
+
+    // Process buckets
+    (0..range).for_each(|i| {
+        while buckets1[i] > 0 {
+            while j < range && buckets2[j] == 0 {
+                j += 1;
+            }
+            if j < range {
+                let actual_num1 = i as i64 + min_val;
+                let actual_num2 = j as i64 + min_val;
+                total_distance += (actual_num1 - actual_num2).abs();
+                buckets1[i] -= 1;
+                buckets2[j] -= 1;
+            }
+        }
+    });
+
+    total_distance
 }
 
 fn main() -> Result<()> {
@@ -99,7 +120,7 @@ fn main() -> Result<()> {
 
         let now = Instant::now();
 
-        match get_sorted_vectors(file) {
+        match load_data(file) {
             Ok((v1, v2)) => {
                 let distance = compute_distance(&v1, &v2);
                 println!(
