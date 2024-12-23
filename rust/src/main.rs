@@ -74,8 +74,8 @@ fn compute_distance(col1: &Vec<i64>, col2: &Vec<i64>) -> i64 {
     const MAX_VAL: i64 = 99_999;
     const RANGE: usize = (MAX_VAL - MIN_VAL + 1) as usize;
 
-    let mut buckets1: [i32; RANGE] = [0; RANGE];
-    let mut buckets2: [i32; RANGE] = [0; RANGE];
+    let mut buckets1 = [0; RANGE];
+    let mut buckets2 = [0; RANGE];
 
     // Populate buckets (adjust for offset)
     for &num in col1 {
@@ -84,7 +84,7 @@ fn compute_distance(col1: &Vec<i64>, col2: &Vec<i64>) -> i64 {
     for &num in col2 {
         buckets2[(num - MIN_VAL) as usize] += 1;
     }
-
+    
     // Process buckets
     let mut total_distance = 0;
     let mut j = 0;
