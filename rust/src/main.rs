@@ -1,96 +1,58 @@
-#![feature(portable_simd)] // Enable nightly SIMD feature
-
-use anyhow::{Context, Result};
-use memmap::MmapOptions;
-
-use std::{
-    fs::File,
-    simd::{i32x8, num::SimdInt},
-    time::Instant,
+use anyhow::Result;
+use polars::{
+    frame::DataFrame,
+    io::SerReader,
+    prelude::{CsvParseOptions, CsvReadOptions},
 };
 
-fn load_data(file_path: &str) -> Result<(Vec<i64>, Vec<i64>)> {
-    let file = File::open(file_path).context("Failed to open file")?;
-    let mmap = unsafe { MmapOptions::new().map(&file)? };
-    let initial_capacity = mmap.len() / 2;
+use std::time::Instant;
 
-    let (col1, col2): (Vec<i64>, Vec<i64>) = mmap
-        .split(|&line| line == b'\n')
-        .filter_map(parse_line)
-        .fold(
-            (
-                Vec::with_capacity(initial_capacity),
-                Vec::with_capacity(initial_capacity),
-            ),
-            |(mut c1, mut c2), (a, b)| {
-                c1.push(a);
-                c2.push(b);
-                (c1, c2)
-            },
-        );
+fn load_data(file_path: &str) -> Result<DataFrame> {
+    let df = CsvReadOptions::default()
+        .with_has_header(false)
+        .with_parse_options(CsvParseOptions {
+            separator: b' ',
+            ..Default::default()
+        })
+        .try_into_reader_with_file_path(Some(file_path.into()))
+        .unwrap()
+        .finish()
+        .unwrap();
 
-    Ok((col1, col2))
+    Ok(df)
 }
 
-fn parse_line(bytes: &[u8]) -> Option<(i64, i64)> {
-    if bytes.len() < 11 {
-        return None;
-    }
-
-    let num1_simd = i32x8::from([
-        (bytes[0] - b'0') as i32,
-        (bytes[1] - b'0') as i32,
-        (bytes[2] - b'0') as i32,
-        (bytes[3] - b'0') as i32,
-        (bytes[4] - b'0') as i32,
-        0,
-        0,
-        0,
-    ]);
-    let num2_simd = i32x8::from([
-        (bytes[6] - b'0') as i32,
-        (bytes[7] - b'0') as i32,
-        (bytes[8] - b'0') as i32,
-        (bytes[9] - b'0') as i32,
-        (bytes[10] - b'0') as i32,
-        0,
-        0,
-        0,
-    ]);
-
-    // SIMD vector for powers of 10 for multiplication
-    let powers_of_ten = i32x8::from([10000, 1000, 100, 10, 1, 0, 0, 0]);
-
-    // Do the multiplication
-    let num1 = (num1_simd * powers_of_ten).reduce_sum() as i64;
-    let num2 = (num2_simd * powers_of_ten).reduce_sum() as i64;
-
-    Some((num1, num2))
-}
-
-fn compute_distance(col1: &Vec<i64>, col2: &Vec<i64>) -> i64 {
-    // In the source data, we all have 5-digit numbers. So our range is known. This lends itself to bucket sort!
+fn compute_distance(df: &DataFrame) -> Result<i64> {
+    // Define the range for 5-digit numbers
     const MIN_VAL: i64 = 10_000;
     const MAX_VAL: i64 = 99_999;
     const RANGE: usize = (MAX_VAL - MIN_VAL + 1) as usize;
 
-    let mut buckets1 = [0; RANGE];
-    let mut buckets2 = [0; RANGE];
+    // Initialize buckets
+    let mut buckets1 = vec![0i64; RANGE];
+    let mut buckets2 = vec![0i64; RANGE];
 
-    // Populate buckets (adjust for offset)
-    for &num in col1 {
+    // Get the first and second columns
+    let col1 = df.column("column_1")?.i64()?.into_no_null_iter();
+    let col2 = df.column("column_2")?.i64()?.into_no_null_iter();
+
+    // Populate buckets
+    for num in col1 {
         buckets1[(num - MIN_VAL) as usize] += 1;
     }
-    for &num in col2 {
+    for num in col2 {
         buckets2[(num - MIN_VAL) as usize] += 1;
     }
-    
+
     // Process buckets
     let mut total_distance = 0;
     let mut j = 0;
     (0..RANGE).for_each(|i| {
         while buckets1[i] > 0 {
-            while j < RANGE && buckets2[j] == 0 {
+            loop {
+                if !(j < RANGE && buckets2[j] == 0) {
+                    break;
+                }
                 j += 1;
             }
             if j < RANGE {
@@ -103,7 +65,7 @@ fn compute_distance(col1: &Vec<i64>, col2: &Vec<i64>) -> i64 {
         }
     });
 
-    total_distance
+    Ok(total_distance)
 }
 
 fn main() -> Result<()> {
@@ -120,8 +82,8 @@ fn main() -> Result<()> {
         let now = Instant::now();
 
         match load_data(file) {
-            Ok((v1, v2)) => {
-                let distance = compute_distance(&v1, &v2);
+            Ok(df) => {
+                let distance = compute_distance(&df).unwrap();
                 println!(
                     "The answer is: {}, completed in {}ms\n",
                     distance,

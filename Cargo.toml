@@ -6,6 +6,7 @@ members = ["rust"]
 anyhow = { version = "1.0.94" }
 rayon = { version = "1.10.0" }
 memmap = { version = "0.7.0" }
+polars = { version = "0.45.1" }
 
 [profile.release]
 opt-level = 3
