@@ -83,9 +83,6 @@ fn main() -> Result<()> {
         "./data/input_10k.txt",
         "./data/input_100k.txt",
         "./data/input_1m.txt",
-        "./data/input_10m.txt",
-        "./data/input_50m.txt",
-        "./data/input_100m.txt",
     ];
 
     for file in files.iter() {
