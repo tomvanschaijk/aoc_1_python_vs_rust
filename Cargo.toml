@@ -5,6 +5,7 @@ members = ["rust"]
 [workspace.dependencies]
 anyhow = { version = "1.0.94" }
 memmap = { version = "0.7.0" }
+memchr = { version = "2.7" }
 
 [profile.release]
 opt-level = 3
