@@ -1,17 +1,17 @@
 #![feature(portable_simd)]
 
 use anyhow::{Context, Result};
-use memmap::Mmap;
 use memchr::memchr;
+use memmap::Mmap;
 
 use std::{fs::File, time::Instant};
 
-// Define the range for 5-digit numbers
-const MIN_VAL: i64 = 10_000;
-const MAX_VAL: i64 = 99_999;
-const RANGE: usize = (MAX_VAL - MIN_VAL + 1) as usize;
-
 fn compute_distance(file_path: &str) -> Result<i64> {
+    // Define the range for 5-digit numbers
+    const MIN_VAL: i64 = 10_000;
+    const MAX_VAL: i64 = 99_999;
+    const RANGE: usize = (MAX_VAL - MIN_VAL + 1) as usize;
+
     // Initialize buckets
     let mut buckets1 = vec![0i32; RANGE];
     let mut buckets2 = vec![0i32; RANGE];
@@ -27,9 +27,9 @@ fn compute_distance(file_path: &str) -> Result<i64> {
             Some(p) => pos + p,
             None => mmap.len(),
         };
-    
-        let line = &mmap[pos..end-1];
-        pos = end + 1;    
+
+        let line = &mmap[pos..end - 1];
+        pos = end + 1;
 
         if line.len() >= 11 {
             if let Some((num1, num2)) = parse_line(line) {
