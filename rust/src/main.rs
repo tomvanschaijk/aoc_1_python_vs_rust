@@ -1,5 +1,3 @@
-#![feature(portable_simd)]
-
 use anyhow::{Context, Result};
 use memchr::memchr;
 use memmap::Mmap;
