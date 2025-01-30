@@ -8,30 +8,22 @@ fn compute_distance(file_path: &str) -> Result<i64> {
     const MIN_VAL: i64 = 10_000;
     const MAX_VAL: i64 = 99_999;
     const RANGE: usize = (MAX_VAL - MIN_VAL + 1) as usize;
-
+    
     // Initialize buckets
     let mut buckets1 = vec![0i32; RANGE];
     let mut buckets2 = vec![0i32; RANGE];
-
+    
     // Open file and memory-map it
     let file = File::open(file_path).context("Failed to open file")?;
     let mmap = unsafe { Mmap::map(&file).context("Failed to memory-map file")? };
-
+    
     // Since we know the exact length in bytes of each line, we can simply step through it
-    let mut start = 0;
     const STEP: usize = 13;
-    while start + STEP <= mmap.len() {
-        let end = start + STEP;
-
-        let line = &mmap[start..end];
-        start = end;
-
-        if line.len() >= 11 {
-            if let Some((num1, num2)) = parse_line(line) {
-                unsafe {
-                    *buckets1.get_unchecked_mut((num1 - MIN_VAL) as usize) += 1;
-                    *buckets2.get_unchecked_mut((num2 - MIN_VAL) as usize) += 1;
-                }
+    for line in mmap.chunks_exact(STEP) {
+        if let Some((num1, num2)) = parse_line(line) {
+            unsafe {
+                *buckets1.get_unchecked_mut((num1 - MIN_VAL) as usize) += 1;
+                *buckets2.get_unchecked_mut((num2 - MIN_VAL) as usize) += 1;
             }
         }
     }
@@ -49,9 +41,8 @@ fn compute_distance(file_path: &str) -> Result<i64> {
                 break;
             }
 
-            let count = std::cmp::min(buckets1[i], buckets2[j]);
-            let diff = (i as i64 - j as i64).abs();
-            total_distance += count as i64 * diff;
+            let count = buckets1[i].min(buckets2[j]);
+            total_distance += count as i64 * (i as i64 - j as i64).abs();
             buckets1[i] -= count;
             buckets2[j] -= count;
         }
@@ -95,9 +86,6 @@ fn main() -> Result<()> {
         "./data/input_10k.txt",
         "./data/input_100k.txt",
         "./data/input_1m.txt",
-        "./data/input_10m.txt",
-        "./data/input_50m.txt",
-        "./data/input_100m.txt",
     ];
 
     for file in files.iter() {
