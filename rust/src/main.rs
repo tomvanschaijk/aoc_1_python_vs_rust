@@ -52,7 +52,7 @@ fn compute_distance(file_path: &str) -> Result<i64> {
 }
 
 fn parse_line(bytes: &[u8]) -> Option<(i64, i64)> {
-    if bytes.len() < 11 || unsafe { *bytes.get_unchecked(5) } != b' ' {
+    if bytes.len() < 13 || unsafe { *bytes.get_unchecked(5) } != b' ' {
         return None;
     }
 
