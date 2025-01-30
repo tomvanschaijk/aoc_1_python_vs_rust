@@ -17,7 +17,7 @@ fn compute_distance(file_path: &str) -> Result<i64> {
     let file = File::open(file_path).context("Failed to open file")?;
     let mmap = unsafe { Mmap::map(&file).context("Failed to memory-map file")? };
 
-    // Since we the exact length in bytes of each line, we can simply step through it
+    // Since we know the exact length in bytes of each line, we can simply step through it
     let mut start = 0;
     const STEP: usize = 13;
     while start + STEP <= mmap.len() {
@@ -95,6 +95,9 @@ fn main() -> Result<()> {
         "./data/input_10k.txt",
         "./data/input_100k.txt",
         "./data/input_1m.txt",
+        "./data/input_10m.txt",
+        "./data/input_50m.txt",
+        "./data/input_100m.txt",
     ];
 
     for file in files.iter() {
