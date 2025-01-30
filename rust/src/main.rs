@@ -1,5 +1,4 @@
 use anyhow::{Context, Result};
-use memchr::memchr;
 use memmap::Mmap;
 
 use std::{fs::File, time::Instant};
@@ -18,16 +17,14 @@ fn compute_distance(file_path: &str) -> Result<i64> {
     let file = File::open(file_path).context("Failed to open file")?;
     let mmap = unsafe { Mmap::map(&file).context("Failed to memory-map file")? };
 
-    // Chunk the file by looking for the \n
-    let mut pos = 0;
-    while pos < mmap.len() {
-        let end = match memchr(b'\n', &mmap[pos..]) {
-            Some(p) => pos + p,
-            None => mmap.len(),
-        };
+    // Since we the exact length in bytes of each line, we can simply step through it
+    let mut start = 0;
+    const STEP: usize = 13;
+    while start + STEP <= mmap.len() {
+        let end = start + STEP;
 
-        let line = &mmap[pos..end - 1];
-        pos = end + 1;
+        let line = &mmap[start..end];
+        start = end;
 
         if line.len() >= 11 {
             if let Some((num1, num2)) = parse_line(line) {
